@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book2MD - 书籍批量转 Markdown</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f0f2f5;
+    color: #333;
+    min-height: 100vh;
+}
+.container {
+    max-width: 840px;
+    margin: 0 auto;
+    padding: 48px 20px;
+}
+h1 {
+    text-align: center;
+    font-size: 2.2em;
+    margin-bottom: 6px;
+    color: #1a1a2e;
+    font-weight: 700;
+}
+.subtitle {
+    text-align: center;
+    color: #888;
+    margin-bottom: 36px;
+    font-size: 0.95em;
+}
+
+/* Drop zone */
+.drop-zone {
+    border: 2px dashed #c5cdd8;
+    border-radius: 16px;
+    padding: 56px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    background: #fff;
+    margin-bottom: 20px;
+}
+.drop-zone:hover, .drop-zone.dragover {
+    border-color: #4a6cf7;
+    background: #f4f7ff;
+    transform: scale(1.005);
+}
+.drop-zone .icon { font-size: 52px; margin-bottom: 14px; }
+.drop-zone p { color: #666; font-size: 1em; }
+.drop-zone .formats { color: #aaa; font-size: 0.85em; margin-top: 8px; }
+input[type="file"] { display: none; }
+
+/* Actions bar */
+.actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.btn {
+    padding: 9px 22px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+.btn-primary { background: #4a6cf7; color: #fff; }
+.btn-primary:hover { background: #3a5ae5; }
+.btn-primary:disabled { background: #b0b8c8; cursor: not-allowed; }
+.btn-success { background: #2ecc71; color: #fff; }
+.btn-success:hover { background: #27ae60; }
+.btn-ghost { background: transparent; color: #888; border: 1px solid #ddd; }
+.btn-ghost:hover { background: #f5f5f5; color: #555; }
+
+/* File list */
+.file-list { display: flex; flex-direction: column; gap: 8px; }
+.file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+    border-radius: 12px;
+    padding: 14px 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    transition: box-shadow 0.2s;
+}
+.file-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+.file-icon {
+    width: 38px; height: 38px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7em; font-weight: 700; color: #fff; flex-shrink: 0;
+    letter-spacing: 0.5px;
+}
+.file-icon.pdf { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+.file-icon.epub { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+.file-icon.mobi, .file-icon.azw, .file-icon.azw3, .file-icon.kfx { background: linear-gradient(135deg, #f39c12, #e67e22); }
+.file-icon.djvu, .file-icon.fb2, .file-icon.cbz, .file-icon.cbr { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+.file-details { min-width: 0; }
+.file-name {
+    font-size: 0.9em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: block; max-width: 380px;
+}
+.file-meta { font-size: 0.75em; color: #aaa; margin-top: 2px; }
+.file-actions {
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+
+/* Status badges */
+.status-badge {
+    padding: 4px 10px; border-radius: 12px;
+    font-size: 0.78em; font-weight: 500; white-space: nowrap;
+}
+.status-waiting { background: #f0f0f0; color: #999; }
+.status-converting { background: #fff3cd; color: #856404; }
+.status-done { background: #d4edda; color: #155724; }
+.status-error { background: #f8d7da; color: #721c24; }
+
+/* Small buttons */
+.sm-btn {
+    padding: 4px 12px; border-radius: 6px; font-size: 0.78em;
+    cursor: pointer; border: 1px solid; text-decoration: none;
+    transition: all 0.15s; display: inline-block; white-space: nowrap;
+}
+.sm-btn-blue { border-color: #4a6cf7; color: #4a6cf7; background: transparent; }
+.sm-btn-blue:hover { background: #4a6cf7; color: #fff; }
+.sm-btn-green { border-color: #2ecc71; color: #2ecc71; background: transparent; }
+.sm-btn-green:hover { background: #2ecc71; color: #fff; }
+.sm-btn-red { border-color: transparent; color: #ccc; background: transparent; font-size: 1em; padding: 2px 6px; }
+.sm-btn-red:hover { color: #e74c3c; }
+
+/* Error detail */
+.error-detail {
+    font-size: 0.75em; color: #c0392b; margin-top: 4px;
+    max-width: 380px; word-break: break-all;
+}
+
+/* Spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+    width: 15px; height: 15px;
+    border: 2px solid #e0e0e0; border-top-color: #4a6cf7;
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+
+/* Modal */
+.modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); z-index: 1000;
+    justify-content: center; align-items: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+    background: #fff; border-radius: 14px;
+    width: 90vw; max-width: 800px; height: 80vh;
+    display: flex; flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 24px; border-bottom: 1px solid #eee;
+}
+.modal-header h3 { font-size: 1em; font-weight: 600; }
+.modal-close {
+    background: none; border: none; font-size: 1.5em;
+    cursor: pointer; color: #999; line-height: 1;
+}
+.modal-close:hover { color: #333; }
+.modal-body {
+    flex: 1; overflow-y: auto; padding: 24px;
+    font-size: 0.9em; line-height: 1.7;
+}
+.modal-body h1 { font-size: 1.6em; margin: 16px 0 8px; text-align: left; }
+.modal-body h2 { font-size: 1.3em; margin: 14px 0 6px; }
+.modal-body h3 { font-size: 1.1em; margin: 12px 0 4px; }
+.modal-body p { margin: 6px 0; }
+.modal-body hr { margin: 16px 0; border: none; border-top: 1px solid #eee; }
+.modal-body blockquote { border-left: 3px solid #4a6cf7; padding-left: 12px; color: #666; margin: 8px 0; }
+.modal-body code { background: #f5f5f5; padding: 2px 5px; border-radius: 3px; font-size: 0.9em; }
+.modal-body pre { background: #f5f5f5; padding: 12px; border-radius: 8px; overflow-x: auto; }
+
+/* History */
+.history-section { margin-top: 40px; }
+.section-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 14px; padding-bottom: 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+.section-header h2 { font-size: 1.1em; color: #555; font-weight: 600; }
+.history-count {
+    font-size: 0.8em; color: #999; background: #eee;
+    padding: 2px 8px; border-radius: 10px;
+}
+.file-icon.md { background: linear-gradient(135deg, #3498db, #2980b9); }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>Book2MD</h1>
+    <p class="subtitle">PDF / EPUB 批量转换为 Markdown 格式</p>
+
+    <div class="drop-zone" id="dropZone">
+        <div class="icon">📚</div>
+        <p>拖拽文件到此处，或点击选择文件</p>
+        <p class="formats">支持 PDF、EPUB、MOBI、AZW3 等格式，可同时选择多个文件</p>
+    </div>
+    <input type="file" id="fileInput" multiple accept=".pdf,.epub,.mobi,.azw,.azw3,.kfx,.djvu,.fb2,.cbz,.cbr">
+
+    <div class="actions" id="actions" style="display:none">
+        <button class="btn btn-primary" id="convertBtn" onclick="startConvert()">开始转换</button>
+        <button class="btn btn-success" id="downloadAllBtn" onclick="downloadAll()" style="display:none">打包下载 ZIP</button>
+        <button class="btn btn-ghost" onclick="clearAll()">清空列表</button>
+    </div>
+
+    <div class="file-list" id="fileList"></div>
+
+    <!-- History section -->
+    <div class="history-section" id="historySection" style="display:none">
+        <div class="section-header">
+            <h2>转换历史</h2>
+            <span class="history-count" id="historyCount"></span>
+        </div>
+        <div class="file-list" id="historyList"></div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="modalTitle">预览</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+</div>
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const fileList = document.getElementById('fileList');
+const actions = document.getElementById('actions');
+const convertBtn = document.getElementById('convertBtn');
+const downloadAllBtn = document.getElementById('downloadAllBtn');
+
+let selectedFiles = [];
+let taskMap = {};
+let converting = false;
+
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    addFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', e => addFiles(e.target.files));
+
+function addFiles(files) {
+    for (const f of files) {
+        const ext = f.name.split('.').pop().toLowerCase();
+        if (['pdf', 'epub', 'mobi', 'azw', 'azw3', 'kfx', 'djvu', 'fb2', 'cbz', 'cbr'].includes(ext)) {
+            if (!selectedFiles.some(sf => sf.name === f.name && sf.size === f.size)) {
+                selectedFiles.push(f);
+            }
+        }
+    }
+    renderList();
+    actions.style.display = selectedFiles.length ? 'flex' : 'none';
+}
+
+function removeFile(index) {
+    selectedFiles.splice(index, 1);
+    renderList();
+    if (!selectedFiles.length) actions.style.display = 'none';
+}
+
+function renderList() {
+    fileList.innerHTML = '';
+    selectedFiles.forEach((f, i) => {
+        const ext = f.name.split('.').pop().toLowerCase();
+        const tid = taskMap[f.name];
+        const status = tid ? (taskMap[`${f.name}_status`] || 'waiting') : 'waiting';
+        const error = taskMap[`${f.name}_error`];
+        const progress = taskMap[`${f.name}_progress`] || 0;
+        const total = taskMap[`${f.name}_total`] || 0;
+        const duration = taskMap[`${f.name}_duration`];
+
+        // Meta info
+        let metaText = formatSize(f.size);
+        if (duration !== null && duration !== undefined) metaText += ` · ${duration}s`;
+
+        // Status HTML
+        let statusHtml = '';
+        let actionsHtml = '';
+
+        if (status === 'waiting') {
+            statusHtml = '<span class="status-badge status-waiting">等待中</span>';
+            actionsHtml = `<button class="sm-btn sm-btn-red" onclick="removeFile(${i})" title="移除">&times;</button>`;
+        } else if (status === 'converting') {
+            const pct = total > 0 ? ` ${progress}/${total}页` : '';
+            statusHtml = `<div class="spinner"></div><span class="status-badge status-converting">转换中${pct}</span>`;
+        } else if (status === 'done') {
+            statusHtml = '<span class="status-badge status-done">完成</span>';
+            actionsHtml = `<button class="sm-btn sm-btn-blue" onclick="previewFile('${tid}', '${f.name.replace(/'/g, "\\'")}')">预览</button><a class="sm-btn sm-btn-green" href="/download/${tid}" download>下载</a>`;
+        } else if (status === 'error') {
+            statusHtml = '<span class="status-badge status-error">失败</span>';
+        }
+
+        const el = document.createElement('div');
+        el.className = 'file-item';
+        el.innerHTML = `
+            <div class="file-info">
+                <div class="file-icon ${ext}">${ext.toUpperCase()}</div>
+                <div class="file-details">
+                    <span class="file-name" title="${f.name}">${f.name}</span>
+                    <div class="file-meta">${metaText}</div>
+                    ${status === 'error' && error ? `<div class="error-detail">原因: ${error}</div>` : ''}
+                </div>
+            </div>
+            <div class="file-actions">
+                ${statusHtml}
+                ${actionsHtml}
+            </div>
+        `;
+        fileList.appendChild(el);
+    });
+}
+
+async function startConvert() {
+    if (!selectedFiles.length || converting) return;
+    converting = true;
+    convertBtn.disabled = true;
+    convertBtn.textContent = '上传中...';
+
+    const formData = new FormData();
+    selectedFiles.forEach(f => formData.append('files', f));
+
+    try {
+        const resp = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await resp.json();
+        data.task_ids.forEach((tid, i) => {
+            const fname = selectedFiles[i].name;
+            taskMap[fname] = tid;
+            taskMap[`${fname}_status`] = 'converting';
+        });
+        convertBtn.textContent = '转换中...';
+        renderList();
+        pollStatus(data.task_ids);
+    } catch (e) {
+        alert('上传失败: ' + e.message);
+        convertBtn.disabled = false;
+        convertBtn.textContent = '开始转换';
+        converting = false;
+    }
+}
+
+async function pollStatus(taskIds) {
+    const ids = taskIds.join(',');
+    const check = async () => {
+        try {
+            const resp = await fetch(`/status?ids=${ids}`);
+            const data = await resp.json();
+            let allDone = true;
+            for (const [tid, info] of Object.entries(data)) {
+                taskMap[info.filename] = tid;
+                taskMap[`${info.filename}_status`] = info.status;
+                taskMap[`${info.filename}_progress`] = info.progress;
+                taskMap[`${info.filename}_total`] = info.total;
+                taskMap[`${info.filename}_error`] = info.error;
+                taskMap[`${info.filename}_duration`] = info.duration;
+                if (info.status === 'converting') allDone = false;
+            }
+            renderList();
+            if (!allDone) {
+                setTimeout(check, 800);
+            } else {
+                convertBtn.disabled = false;
+                convertBtn.textContent = '开始转换';
+                converting = false;
+                const hasDone = Object.values(data).some(t => t.status === 'done');
+                if (hasDone) downloadAllBtn.style.display = 'inline-block';
+                loadHistory();
+            }
+        } catch (e) {
+            setTimeout(check, 1500);
+        }
+    };
+    check();
+}
+
+async function previewFile(taskId, filename) {
+    const overlay = document.getElementById('modalOverlay');
+    const body = document.getElementById('modalBody');
+    const title = document.getElementById('modalTitle');
+    title.textContent = filename.replace(/\.[^.]+$/, '') + '.md';
+    body.innerHTML = '<p style="color:#999">加载中...</p>';
+    overlay.classList.add('show');
+
+    try {
+        const resp = await fetch(`/preview/${taskId}`);
+        const md = await resp.text();
+        body.innerHTML = marked.parse(md);
+    } catch (e) {
+        body.innerHTML = `<p style="color:red">加载失败: ${e.message}</p>`;
+    }
+}
+
+function closeModal(e) {
+    if (e && e.target !== e.currentTarget) return;
+    document.getElementById('modalOverlay').classList.remove('show');
+}
+
+function downloadAll() {
+    const tids = [];
+    selectedFiles.forEach(f => {
+        const tid = taskMap[f.name];
+        if (tid && taskMap[`${f.name}_status`] === 'done') tids.push(tid);
+    });
+    if (tids.length) window.location.href = `/download-all?ids=${tids.join(',')}`;
+}
+
+function clearAll() {
+    selectedFiles = [];
+    taskMap = {};
+    converting = false;
+    fileList.innerHTML = '';
+    actions.style.display = 'none';
+    downloadAllBtn.style.display = 'none';
+    convertBtn.disabled = false;
+    convertBtn.textContent = '开始转换';
+    fileInput.value = '';
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal(e);
+});
+
+// --- History ---
+async function loadHistory() {
+    try {
+        const resp = await fetch('/history');
+        const data = await resp.json();
+        const section = document.getElementById('historySection');
+        const list = document.getElementById('historyList');
+        const count = document.getElementById('historyCount');
+
+        if (!data.length) { section.style.display = 'none'; return; }
+
+        section.style.display = 'block';
+        count.textContent = data.length + ' 本';
+        list.innerHTML = '';
+
+        data.forEach(item => {
+            const mdName = item.filename.replace(/\.[^.]+$/, '') + '.md';
+            const meta = formatSize(item.file_size) + (item.duration ? ` · ${item.duration}s` : '');
+            const el = document.createElement('div');
+            el.className = 'file-item';
+            el.innerHTML = `
+                <div class="file-info">
+                    <div class="file-icon md">MD</div>
+                    <div class="file-details">
+                        <span class="file-name" title="${mdName}">${mdName}</span>
+                        <div class="file-meta">${meta}</div>
+                    </div>
+                </div>
+                <div class="file-actions">
+                    <span class="status-badge status-done">完成</span>
+                    <button class="sm-btn sm-btn-blue" onclick="previewFile('${item.task_id}', '${item.filename.replace(/'/g, "\\'")}')">预览</button>
+                    <a class="sm-btn sm-btn-green" href="/download/${item.task_id}" download>下载</a>
+                </div>
+            `;
+            list.appendChild(el);
+        });
+    } catch (e) {}
+}
+
+// Load history on page load and after conversions complete
+loadHistory();
+
+</script>
+</body>
+</html>

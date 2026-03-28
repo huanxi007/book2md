@@ -1,0 +1,7 @@
+fastapi>=0.110.0
+uvicorn>=0.29.0
+python-multipart>=0.0.9
+pymupdf4llm>=0.0.17
+ebooklib>=0.18
+html2text>=2024.2.26
+jinja2>=3.1.3
