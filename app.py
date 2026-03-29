@@ -38,7 +38,7 @@ async def upload_files(files: list[UploadFile] = File(...)):
 
     for file in files:
         ext = Path(file.filename).suffix.lower()
-        supported = {".pdf", ".epub", ".mobi", ".azw", ".azw3", ".kfx", ".djvu", ".fb2", ".cbz", ".cbr"}
+        supported = {".pdf", ".epub", ".mobi", ".azw", ".azw3", ".kfx", ".djvu", ".fb2", ".cbz", ".cbr", ".xml", ".enex", ".notes"}
         if ext not in supported:
             continue
 

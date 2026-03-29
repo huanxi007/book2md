@@ -108,6 +108,8 @@ input[type="file"] { display: none; }
 .file-icon.epub { background: linear-gradient(135deg, #2ecc71, #27ae60); }
 .file-icon.mobi, .file-icon.azw, .file-icon.azw3, .file-icon.kfx { background: linear-gradient(135deg, #f39c12, #e67e22); }
 .file-icon.djvu, .file-icon.fb2, .file-icon.cbz, .file-icon.cbr { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+.file-icon.xml { background: linear-gradient(135deg, #1abc9c, #16a085); }
+.file-icon.enex, .file-icon.notes { background: linear-gradient(135deg, #00a82d, #008c25); }
 .file-details { min-width: 0; }
 .file-name {
     font-size: 0.9em;
@@ -215,9 +217,9 @@ input[type="file"] { display: none; }
     <div class="drop-zone" id="dropZone">
         <div class="icon">📚</div>
         <p>拖拽文件到此处，或点击选择文件</p>
-        <p class="formats">支持 PDF、EPUB、MOBI、AZW3 等格式，可同时选择多个文件</p>
+        <p class="formats">支持 PDF、EPUB、MOBI、AZW3、印象笔记(.enex/.notes)、XML 等格式</p>
     </div>
-    <input type="file" id="fileInput" multiple accept=".pdf,.epub,.mobi,.azw,.azw3,.kfx,.djvu,.fb2,.cbz,.cbr">
+    <input type="file" id="fileInput" multiple accept=".pdf,.epub,.mobi,.azw,.azw3,.kfx,.djvu,.fb2,.cbz,.cbr,.xml,.enex,.notes">
 
     <div class="actions" id="actions" style="display:none">
         <button class="btn btn-primary" id="convertBtn" onclick="startConvert()">开始转换</button>
@@ -279,7 +281,7 @@ fileInput.addEventListener('change', e => addFiles(e.target.files));
 function addFiles(files) {
     for (const f of files) {
         const ext = f.name.split('.').pop().toLowerCase();
-        if (['pdf', 'epub', 'mobi', 'azw', 'azw3', 'kfx', 'djvu', 'fb2', 'cbz', 'cbr'].includes(ext)) {
+        if (['pdf', 'epub', 'mobi', 'azw', 'azw3', 'kfx', 'djvu', 'fb2', 'cbz', 'cbr', 'xml', 'enex', 'notes'].includes(ext)) {
             if (!selectedFiles.some(sf => sf.name === f.name && sf.size === f.size)) {
                 selectedFiles.push(f);
             }
